@@ -43,25 +43,7 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
                 case "/info" ->
                         send("Telegram bot - напоминание о делах. Автор: Владислав Алиев, 2024г.");
                 default -> {
-                    Matcher matcher = pattern.matcher(messageText);
-                    if (matcher.matches()) {
-                        String date = matcher.group(1);
-                        String message = matcher.group(3);
-                        LocalDateTime localDateTime = LocalDateTime.parse(date, DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
-                        if (LocalDateTime.now().isBefore(localDateTime)) {
-                            notificationTaskRepository.save(
-                                    new NotificationTask(
-                                            localDateTime,
-                                            chatId,
-                                            message));
-                            send("Задача сохранена!");
-                            logger.info("Task saved!");
-                        } else {
-                            send("Заданная дата выполнения задачи должна быть позже текущей! Попробуйте снова!");
-                        }
-                    } else {
-                        send("Неверная команда. Для сохранения задачи, наберите её в формате 'дд.мм.гггг чч:мм текст_задачи'. Для вывода информации введите '/info'");
-                    }
+                    matchesMessage(messageText, chatId);
                 }
             }
         } else {
@@ -78,12 +60,22 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
                 .forEach(this::send);
     }
 
+    /**
+     * Initialisation NotificationTaskService
+     * @param update Update from com.pengrad.telegrambot.model
+     * @param telegramBot TelegramBot from com.pengrad.telegrambot
+     * @param logger Logger
+     */
     public void init(Update update, TelegramBot telegramBot, Logger logger) {
         this.update = update;
         this.telegramBot = telegramBot;
         this.logger = logger;
     }
 
+    /**
+     * Send message to chat
+     * @param s Message
+     */
     private void send(String s) {
             SendMessage sendMessage = new SendMessage(update.message().chat().id(), s);
             SendResponse response = telegramBot.execute(sendMessage);
@@ -93,5 +85,42 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
             } else {
                 logger.info("Response OK!");
             }
+    }
+
+    /**
+     * Marches message
+     * @param messageText Message text
+     * @param chatId Chat id
+     */
+    private void matchesMessage(String messageText, Long chatId) {
+        Matcher matcher = pattern.matcher(messageText);
+        if (matcher.matches()) {
+            String date = matcher.group(1);
+            String message = matcher.group(3);
+            LocalDateTime localDateTime = LocalDateTime.parse(date, DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
+            if (LocalDateTime.now().isBefore(localDateTime)) {
+                saveTask(chatId, localDateTime, message);
+            } else {
+                send("Заданная дата выполнения задачи должна быть позже текущей! Попробуйте снова!");
+            }
+        } else {
+            send("Неверная команда. Для сохранения задачи, наберите её в формате 'дд.мм.гггг чч:мм текст_задачи'. Для вывода информации введите '/info'");
+        }
+    }
+
+    /**
+     * Save task to DB
+     * @param chatId Chat id
+     * @param localDateTime Date and time task
+     * @param message Message
+     */
+    private void saveTask(Long chatId, LocalDateTime localDateTime, String message) {
+        notificationTaskRepository.save(
+                new NotificationTask(
+                        localDateTime,
+                        chatId,
+                        message));
+        send("Задача сохранена!");
+        logger.info("Task saved!");
     }
 }
