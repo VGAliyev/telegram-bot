@@ -40,13 +40,18 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
                     if (matcher.matches()) {
                         String date = matcher.group(1);
                         String message = matcher.group(3);
-                        notificationTaskRepository.save(
-                                new NotificationTask(
-                                        LocalDateTime.parse(date, DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")),
-                                        chatId,
-                                        message));
-                        send(update, telegramBot, logger, "Задача сохранена!");
-                        logger.info("Task saved!");
+                        LocalDateTime localDateTime = LocalDateTime.parse(date, DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
+                        if (LocalDateTime.now().isBefore(localDateTime)) {
+                            notificationTaskRepository.save(
+                                    new NotificationTask(
+                                            localDateTime,
+                                            chatId,
+                                            message));
+                            send(update, telegramBot, logger, "Задача сохранена!");
+                            logger.info("Task saved!");
+                        } else {
+                            send(update, telegramBot, logger, "Заданная дата выполнения задачи должна быть позже текущей! Попробуйте снова!");
+                        }
                     } else {
                         send(update, telegramBot, logger, "Неверная команда. Для сохранения задачи, наберите её в формате 'дд.мм.гггг чч:мм текст_задачи'. Для вывода информации введите '/info'");
                     }
