@@ -11,12 +11,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+import pro.sky.telegrambot.model.NotificationTask;
+import pro.sky.telegrambot.service.NotificationTaskService;
+
 import java.util.List;
 
 @Service
 public class TelegramBotUpdatesListener implements UpdatesListener {
 
     private final Logger logger = LoggerFactory.getLogger(TelegramBotUpdatesListener.class);
+
+    @Autowired
+    private NotificationTaskService notificationTaskService;
 
     @Autowired
     private TelegramBot telegramBot;
@@ -31,10 +37,7 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
         updates.forEach(update -> {
             logger.info("Processing update: {}", update);
             // Process your updates here
-            if (update.message().text().equals("/start")) {
-                SendMessage sendMessage = new SendMessage(update.message().chat().id(), "Hello, World!");
-                SendResponse response = telegramBot.execute(sendMessage);
-            }
+            notificationTaskService.sendMessage(update, telegramBot, logger);
         });
         return UpdatesListener.CONFIRMED_UPDATES_ALL;
     }
