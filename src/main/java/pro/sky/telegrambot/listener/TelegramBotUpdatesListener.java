@@ -38,6 +38,7 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             logger.info("Processing update: {}", update);
             // Process your updates here
             notificationTaskService.sendMessage(update, telegramBot, logger);
+            notificationTaskService.scheduling();
         });
         return UpdatesListener.CONFIRMED_UPDATES_ALL;
     }
