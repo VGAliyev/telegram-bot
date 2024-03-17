@@ -70,7 +70,7 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
     }
 
     @Override
-    @Scheduled(cron = "0 0/1 * * * *")
+    @Scheduled(cron = "10 0/1 * * * *")
     public void scheduling() {
         notificationTaskRepository.findByDatetime(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES))
                 .stream()
