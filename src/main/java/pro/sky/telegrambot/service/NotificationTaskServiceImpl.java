@@ -66,7 +66,7 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
      * @param telegramBot TelegramBot from com.pengrad.telegrambot
      * @param logger Logger
      */
-    public void init(Update update, TelegramBot telegramBot, Logger logger) {
+    private void init(Update update, TelegramBot telegramBot, Logger logger) {
         this.update = update;
         this.telegramBot = telegramBot;
         this.logger = logger;
