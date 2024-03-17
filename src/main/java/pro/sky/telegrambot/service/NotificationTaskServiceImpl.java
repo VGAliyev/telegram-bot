@@ -4,7 +4,6 @@ import com.pengrad.telegrambot.TelegramBot;
 import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
-import org.slf4j.Logger;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import pro.sky.telegrambot.exception.SendResponseException;
@@ -14,6 +13,7 @@ import pro.sky.telegrambot.repository.NotificationTaskRepository;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,7 +23,6 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
 
     private Update update;
     private TelegramBot telegramBot;
-    private Logger logger;
 
     private final NotificationTaskRepository notificationTaskRepository;
 
@@ -32,29 +31,39 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
     }
 
     @Override
-    public void sendMessage(Update update, TelegramBot telegramBot, Logger logger) {
-        init(update, telegramBot, logger);
+    public String[] sendMessage(Update update, TelegramBot telegramBot) {
+        init(update, telegramBot);
+        String[] message = new String[2];
         if (update.message() != null) {
             String messageText = update.message().text();
             Long chatId = update.message().chat().id();
             switch (messageText) {
-                case "/start" ->
-                        send("Привет. Для сохранения задачи, наберите её в формате 'дд.мм.гггг чч:мм текст_задачи'. Для вывода информации введите '/info'");
-                case "/info" ->
-                        send("Telegram bot - напоминание о делах. Автор: Владислав Алиев, 2024г.");
+                case "/start" -> {
+                    String hello = "Привет. Для сохранения задачи, наберите её в формате 'дд.мм.гггг чч:мм текст_задачи'. Для вывода информации введите '/info'";
+                    send(hello);
+                    message = new String[]{"START", hello};
+                }
+                case "/info" -> {
+                    String info = "Telegram bot - напоминание о делах. Автор: Владислав Алиев, 2024г.";
+                    send(info);
+                    message = new String[]{"ABOUT_BOT", info};
+                }
                 default -> {
-                    matchesMessage(messageText, chatId);
+                    message = matchesMessage(messageText, chatId);
                 }
             }
         } else {
-            logger.warn("Message is null!");
+            message = new String[]{"WARN", "Message is null!"};
         }
+        return message;
     }
 
     @Override
     @Scheduled(cron = "10 0/1 * * * *")
     public void scheduling() {
-        notificationTaskRepository.findByDatetime(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES))
+        List<NotificationTask> notificationTaskList = notificationTaskRepository.
+                findByDatetime(LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES));
+        notificationTaskList
                 .stream()
                 .map(NotificationTask::getMessage)
                 .forEach(this::send);
@@ -62,37 +71,35 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
 
     /**
      * Initialisation NotificationTaskService
-     * @param update Update from com.pengrad.telegrambot.model
+     *
+     * @param update      Update from com.pengrad.telegrambot.model
      * @param telegramBot TelegramBot from com.pengrad.telegrambot
-     * @param logger Logger
      */
-    private void init(Update update, TelegramBot telegramBot, Logger logger) {
+    private void init(Update update, TelegramBot telegramBot) {
         this.update = update;
         this.telegramBot = telegramBot;
-        this.logger = logger;
     }
 
     /**
      * Send message to chat
-     * @param s Message
+     *
+     * @param m Message
      */
-    private void send(String s) {
-            SendMessage sendMessage = new SendMessage(update.message().chat().id(), s);
-            SendResponse response = telegramBot.execute(sendMessage);
-            if (!response.isOk()) {
-                logger.error("Telegram bot response error: {}", response.errorCode());
-                throw new SendResponseException("Error: " + response.errorCode());
-            } else {
-                logger.info("Response OK!");
-            }
+    private void send(String m) {
+        SendMessage sendMessage = new SendMessage(update.message().chat().id(), m);
+        SendResponse response = telegramBot.execute(sendMessage);
+        if (!response.isOk()) {
+            throw new SendResponseException("SendResponseError: " + response.errorCode());
+        }
     }
 
     /**
      * Marches message
+     *
      * @param messageText Message text
-     * @param chatId Chat id
+     * @param chatId      Chat id
      */
-    private void matchesMessage(String messageText, Long chatId) {
+    private String[] matchesMessage(String messageText, Long chatId) {
         Matcher matcher = pattern.matcher(messageText);
         if (matcher.matches()) {
             String date = matcher.group(1);
@@ -100,19 +107,24 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
             LocalDateTime localDateTime = LocalDateTime.parse(date, DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
             if (LocalDateTime.now().isBefore(localDateTime)) {
                 saveTask(chatId, localDateTime, message);
+                send("Задача сохранена!");
+                return new String[]{"INFO", "Task saved."};
             } else {
                 send("Заданная дата выполнения задачи должна быть позже текущей! Попробуйте снова!");
+                return new String[]{"WARN", "Datetime warning!"};
             }
         } else {
             send("Неверная команда. Для сохранения задачи, наберите её в формате 'дд.мм.гггг чч:мм текст_задачи'. Для вывода информации введите '/info'");
+            return new String[]{"WARN", "Command is not available!"};
         }
     }
 
     /**
      * Save task to DB
-     * @param chatId Chat id
+     *
+     * @param chatId        Chat id
      * @param localDateTime Date and time task
-     * @param message Message
+     * @param message       Message
      */
     private void saveTask(Long chatId, LocalDateTime localDateTime, String message) {
         notificationTaskRepository.save(
@@ -120,7 +132,5 @@ public class NotificationTaskServiceImpl implements NotificationTaskService {
                         localDateTime,
                         chatId,
                         message));
-        send("Задача сохранена!");
-        logger.info("Task saved!");
     }
 }
