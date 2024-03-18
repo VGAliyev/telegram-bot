@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
 import pro.sky.telegrambot.service.NotificationTaskService;
+import pro.sky.telegrambot.service.SchedulingService;
 
 import java.util.List;
 
@@ -20,6 +21,9 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
 
     @Autowired
     private NotificationTaskService notificationTaskService;
+
+    @Autowired
+    private SchedulingService schedulingService;
 
     @Autowired
     private TelegramBot telegramBot;
@@ -36,7 +40,7 @@ public class TelegramBotUpdatesListener implements UpdatesListener {
             // Process your updates here
             String[] message = notificationTaskService.sendMessage(update, telegramBot);
             log(message);
-            notificationTaskService.scheduling();
+            schedulingService.scheduling(update, telegramBot);
         });
         return UpdatesListener.CONFIRMED_UPDATES_ALL;
     }
