@@ -7,4 +7,4 @@ ___
 Все действия логируются в консоль.
 ___
 ### Скриншот бота
-![Скриншот бота](https://github.com/VGAliyev/telegram-bot/screenshot.png)
+![Скриншот бота](https://github.com/VGAliyev/telegram-bot/blob/master/screenshot.png)
